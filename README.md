@@ -29,6 +29,6 @@ npm run build
 
 ## Persistence
 
-The initial persistence layer uses Cloudflare D1. It must be migrated to a
-Netlify-compatible database before saved workout data will work on the Netlify
-deployment.
+Workout data is stored in a strongly consistent, site-wide Netlify Blobs store.
+It persists across visits and deployments without a separate database account
+or connection string.
