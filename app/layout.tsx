@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://leanr-bg.netlify.app"),
   title: "Setmark — Training Log",
   description: "A fast, focused workout log for every set and every personal best.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
