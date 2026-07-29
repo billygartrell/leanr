@@ -8,7 +8,7 @@ type Workout = { id: number; dayType: DayType; startedAt: string; endedAt: strin
 type Dashboard = { activeWorkout: Workout | null; sets: LoggedSet[]; bests: Record<string, number>; recentWorkouts: Workout[] };
 
 const EXERCISES: Record<DayType, string[]> = {
-  upper: ["Bench press", "Overhead press", "Lat pulldown", "Cable row", "Bicep curl", "Tricep pushdown"],
+  upper: ["Bench Press", "Incline Press", "Shoulder Press", "Lat Pulldown", "Cable Row", "Bicep Curls", "Tricep Extensions"],
   lower: ["Back squat", "Deadlift", "Leg press", "Romanian deadlift", "Leg curl", "Calf raise"],
 };
 
