@@ -189,7 +189,7 @@ function WorkoutView({ data, busy, onAdd, onRemove, onEffort, onFinish, onCancel
 function ExerciseCard({ index, exercise, best, sets, effort, busy, onAdd, onRemove, onEffort }: { index: number; exercise: string; best?: number; sets: LoggedSet[]; effort?: Effort; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onRemove: (setId: number) => void; onEffort: (exercise: string, effort: Effort) => void }) {
   const suggested = best || 45;
   const [weight, setWeight] = useState(String(suggested));
-  const [reps, setReps] = useState("8");
+  const [reps, setReps] = useState("10");
   const sessionBest = useMemo(() => Math.max(0, ...sets.map((set) => set.weight)), [sets]);
   const submit = () => {
     const w = Number(weight), r = Number(reps);
