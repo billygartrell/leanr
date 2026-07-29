@@ -68,9 +68,12 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
 .effort-picker button.selected.moderate { background:var(--acid); }
 .effort-picker button.selected.easy { background:#9dd9c5; }
 .set-list { padding:0 22px; }
-.set-list > div { display:grid; grid-template-columns:1fr 90px 25px 90px auto; align-items:center; gap:8px; border-bottom:1px solid var(--line); padding:13px 0; }
+.set-list > div { display:grid; grid-template-columns:1fr 90px 25px 90px auto 34px; align-items:center; gap:8px; border-bottom:1px solid var(--line); padding:9px 0; }
 .set-list span,.set-list small { font-size:9px; letter-spacing:.11em; color:#77736c; }
 .set-list em { font:900 8px/1 Arial; background:var(--coral); padding:5px 7px; justify-self:end; }
+.remove-set { grid-column:6; width:34px; height:34px; border:0; background:transparent; font-size:22px; line-height:1; cursor:pointer; color:#77736c; }
+.remove-set:hover { background:var(--coral); color:var(--ink); }
+.remove-set:disabled { opacity:.4; }
 .set-form { display:grid; grid-template-columns:1fr 1fr auto; gap:1px; background:var(--ink); border-top:1px solid var(--ink); }
 .set-form label { background:var(--paper); padding:12px 18px; font-size:9px; font-weight:900; letter-spacing:.13em; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .set-form label span { display:flex; align-items:center; gap:5px; color:#77736c; }
@@ -95,8 +98,9 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
   .effort-picker > div { justify-content:flex-start; width:100%; }
   .effort-picker button { flex:1; min-width:105px; }
   .set-list { padding:0 16px; }
-  .set-list > div { grid-template-columns:1fr 70px 14px 72px; }
+  .set-list > div { grid-template-columns:1fr 62px 12px 68px 40px; }
   .set-list em { display:none; }
+  .remove-set { grid-column:5; width:40px; height:40px; font-size:24px; }
   .set-form { grid-template-columns:1fr 1fr; }
   .set-form label { padding:12px; display:block; }
   .set-form label span { margin-top:7px; }

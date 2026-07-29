@@ -48,7 +48,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { action?: string; dayType?: string; workoutId?: number; exercise?: string; weight?: number; reps?: number; effort?: string };
+    const body = await request.json() as { action?: string; dayType?: string; workoutId?: number; setId?: number; exercise?: string; weight?: number; reps?: number; effort?: string };
     const data = await readData();
 
     if (body.action === "start") {
@@ -78,6 +78,16 @@ export async function POST(request: Request) {
       else data.efforts.push({ workoutId: body.workoutId, exercise: body.exercise, effort: body.effort as Effort });
       await writeData(data);
       return Response.json({ effort: body.effort });
+    }
+
+    if (body.action === "removeSet") {
+      if (!body.workoutId || !body.setId) return Response.json({ error: "Set not found." }, { status: 400 });
+      if (!data.workouts.some((workout) => workout.id === body.workoutId && !workout.endedAt)) return Response.json({ error: "That workout is no longer active." }, { status: 409 });
+      const setIndex = data.sets.findIndex((set) => set.id === body.setId && set.workoutId === body.workoutId);
+      if (setIndex === -1) return Response.json({ error: "Set not found." }, { status: 404 });
+      data.sets.splice(setIndex, 1);
+      await writeData(data);
+      return Response.json({ removed: true });
     }
 
     if (body.action === "finish" && body.workoutId) {

@@ -68,7 +68,7 @@ export default function Home() {
       {!data.activeWorkout ? (
         <StartView data={data} busy={busy} onStart={(dayType) => act({ action: "start", dayType })} />
       ) : (
-        <WorkoutView data={data} busy={busy} onAdd={(exercise, weight, reps) => act({ action: "addSet", workoutId: data.activeWorkout!.id, exercise, weight, reps })} onEffort={(exercise, effort) => act({ action: "setEffort", workoutId: data.activeWorkout!.id, exercise, effort })} onFinish={() => act({ action: "finish", workoutId: data.activeWorkout!.id })} onCancel={() => act({ action: "cancel", workoutId: data.activeWorkout!.id })} />
+        <WorkoutView data={data} busy={busy} onAdd={(exercise, weight, reps) => act({ action: "addSet", workoutId: data.activeWorkout!.id, exercise, weight, reps })} onRemove={(setId) => act({ action: "removeSet", workoutId: data.activeWorkout!.id, setId })} onEffort={(exercise, effort) => act({ action: "setEffort", workoutId: data.activeWorkout!.id, exercise, effort })} onFinish={() => act({ action: "finish", workoutId: data.activeWorkout!.id })} onCancel={() => act({ action: "cancel", workoutId: data.activeWorkout!.id })} />
       )}
       {message && <div className="toast" role="alert">{message}</div>}
     </main>
@@ -100,7 +100,7 @@ function StartView({ data, busy, onStart }: { data: Dashboard; busy: boolean; on
   </div>;
 }
 
-function WorkoutView({ data, busy, onAdd, onEffort, onFinish, onCancel }: { data: Dashboard; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onEffort: (exercise: string, effort: Effort) => void; onFinish: () => void; onCancel: () => void }) {
+function WorkoutView({ data, busy, onAdd, onRemove, onEffort, onFinish, onCancel }: { data: Dashboard; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onRemove: (setId: number) => void; onEffort: (exercise: string, effort: Effort) => void; onFinish: () => void; onCancel: () => void }) {
   const workout = data.activeWorkout!;
   const exercises = EXERCISES[workout.dayType];
   const goBack = () => {
@@ -113,12 +113,12 @@ function WorkoutView({ data, busy, onAdd, onEffort, onFinish, onCancel }: { data
       <button className="finish" disabled={busy} onClick={onFinish}>FINISH WORKOUT <span>✓</span></button>
     </section>
     <div className="exercise-stack">
-      {exercises.map((exercise, index) => <ExerciseCard key={exercise} index={index + 1} exercise={exercise} best={data.bests[exercise]} sets={data.sets.filter((set) => set.exercise === exercise)} effort={data.efforts[exercise]} busy={busy} onAdd={onAdd} onEffort={onEffort} />)}
+      {exercises.map((exercise, index) => <ExerciseCard key={exercise} index={index + 1} exercise={exercise} best={data.bests[exercise]} sets={data.sets.filter((set) => set.exercise === exercise)} effort={data.efforts[exercise]} busy={busy} onAdd={onAdd} onRemove={onRemove} onEffort={onEffort} />)}
     </div>
   </div>;
 }
 
-function ExerciseCard({ index, exercise, best, sets, effort, busy, onAdd, onEffort }: { index: number; exercise: string; best?: number; sets: LoggedSet[]; effort?: Effort; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onEffort: (exercise: string, effort: Effort) => void }) {
+function ExerciseCard({ index, exercise, best, sets, effort, busy, onAdd, onRemove, onEffort }: { index: number; exercise: string; best?: number; sets: LoggedSet[]; effort?: Effort; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onRemove: (setId: number) => void; onEffort: (exercise: string, effort: Effort) => void }) {
   const suggested = best || 45;
   const [weight, setWeight] = useState(String(suggested));
   const [reps, setReps] = useState("8");
@@ -133,7 +133,7 @@ function ExerciseCard({ index, exercise, best, sets, effort, busy, onAdd, onEffo
       <span>HOW DID IT FEEL?</span>
       <div>{EFFORTS.map((option) => <button key={option.value} type="button" aria-pressed={effort === option.value} className={effort === option.value ? `selected ${option.value}` : ""} disabled={busy} onClick={() => onEffort(exercise, option.value)}>{option.label}</button>)}</div>
     </div>
-    {sets.length > 0 && <div className="set-list">{sets.map((set, i) => <div key={set.id}><span>SET {i + 1}</span><strong>{set.weight} <small>LB</small></strong><b>×</b><strong>{set.reps} <small>REPS</small></strong>{best === set.weight && <em>BEST</em>}</div>)}</div>}
+    {sets.length > 0 && <div className="set-list">{sets.map((set, i) => <div key={set.id}><span>SET {i + 1}</span><strong>{set.weight} <small>LB</small></strong><b>×</b><strong>{set.reps} <small>REPS</small></strong>{best === set.weight && <em>BEST</em>}<button className="remove-set" type="button" disabled={busy} onClick={() => onRemove(set.id)} aria-label={`Remove set ${i + 1} from ${exercise}`}>×</button></div>)}</div>}
     <div className="set-form">
       <label>WEIGHT <span><input inputMode="decimal" type="number" min="0" step="2.5" value={weight} onChange={(e) => setWeight(e.target.value)} /> LB</span></label>
       <label>REPS <span><input inputMode="numeric" type="number" min="1" value={reps} onChange={(e) => setReps(e.target.value)} /></span></label>
