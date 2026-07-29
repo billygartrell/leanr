@@ -80,7 +80,7 @@ export default function Home() {
   return (
     <main>
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="Setmark home"><span>SM</span> SETMARK</a>
+        <a className="brand" href="#top" aria-label="Leanr home"><span>LR</span> LEANR</a>
         <div className="today"><i /> {new Intl.DateTimeFormat("en", { weekday: "short", month: "short", day: "numeric" }).format(new Date())}</div>
       </header>
 

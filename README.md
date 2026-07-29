@@ -1,4 +1,4 @@
-# Setmark / Leanr
+# Leanr
 
 A mobile-first strength-training log for recording individual sets and tracking
 all-time best weights.
