@@ -73,6 +73,15 @@ export async function POST(request: Request) {
       return Response.json({ workout });
     }
 
+    if (body.action === "cancel" && body.workoutId) {
+      const workoutIndex = data.workouts.findIndex((item) => item.id === body.workoutId && !item.endedAt);
+      if (workoutIndex === -1) return Response.json({ error: "Active workout not found." }, { status: 404 });
+      data.workouts.splice(workoutIndex, 1);
+      data.sets = data.sets.filter((set) => set.workoutId !== body.workoutId);
+      await writeData(data);
+      return Response.json({ cancelled: true });
+    }
+
     return Response.json({ error: "Unknown action." }, { status: 400 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Could not update workout." }, { status: 500 });

@@ -60,7 +60,7 @@ export default function Home() {
       {!data.activeWorkout ? (
         <StartView data={data} busy={busy} onStart={(dayType) => act({ action: "start", dayType })} />
       ) : (
-        <WorkoutView data={data} busy={busy} onAdd={(exercise, weight, reps) => act({ action: "addSet", workoutId: data.activeWorkout!.id, exercise, weight, reps })} onFinish={() => act({ action: "finish", workoutId: data.activeWorkout!.id })} />
+        <WorkoutView data={data} busy={busy} onAdd={(exercise, weight, reps) => act({ action: "addSet", workoutId: data.activeWorkout!.id, exercise, weight, reps })} onFinish={() => act({ action: "finish", workoutId: data.activeWorkout!.id })} onCancel={() => act({ action: "cancel", workoutId: data.activeWorkout!.id })} />
       )}
       {message && <div className="toast" role="alert">{message}</div>}
     </main>
@@ -92,10 +92,14 @@ function StartView({ data, busy, onStart }: { data: Dashboard; busy: boolean; on
   </div>;
 }
 
-function WorkoutView({ data, busy, onAdd, onFinish }: { data: Dashboard; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onFinish: () => void }) {
+function WorkoutView({ data, busy, onAdd, onFinish, onCancel }: { data: Dashboard; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onFinish: () => void; onCancel: () => void }) {
   const workout = data.activeWorkout!;
   const exercises = EXERCISES[workout.dayType];
+  const goBack = () => {
+    if (data.sets.length === 0 || window.confirm("Discard this session and return to workout selection? Logged sets from this session will be removed.")) onCancel();
+  };
   return <div className="workout-shell" id="top">
+    <button className="back-button" disabled={busy} onClick={goBack}>← BACK TO SESSION CHOICE</button>
     <section className="session-head">
       <div><p className="eyebrow">SESSION IN PROGRESS</p><h1>{workout.dayType.toUpperCase()} <em>DAY</em></h1><p className="subcopy">Log every set separately. Change the weight whenever you need.</p></div>
       <button className="finish" disabled={busy} onClick={onFinish}>FINISH WORKOUT <span>✓</span></button>
