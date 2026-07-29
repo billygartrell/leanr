@@ -34,13 +34,25 @@ function dashboard(data: TrainingData) {
     result[set.exercise] = Math.max(result[set.exercise] ?? 0, set.weight);
     return result;
   }, {});
-  const recentWorkouts = data.workouts.filter((workout) => workout.endedAt).slice(-12).reverse();
+  const recentWorkouts = data.workouts.filter((workout) => workout.endedAt).slice(-20).reverse().map((workout) => ({
+    ...workout,
+    setCount: data.sets.filter((set) => set.workoutId === workout.id).length,
+  }));
   return { activeWorkout, sets, efforts, bests, recentWorkouts };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    return Response.json(dashboard(await readData()), { headers: { "Cache-Control": "no-store" } });
+    const data = await readData();
+    const workoutId = Number(new URL(request.url).searchParams.get("workoutId"));
+    if (workoutId) {
+      const workout = data.workouts.find((item) => item.id === workoutId);
+      if (!workout) return Response.json({ error: "Workout not found." }, { status: 404 });
+      const sets = data.sets.filter((set) => set.workoutId === workoutId);
+      const efforts = Object.fromEntries(data.efforts.filter((item) => item.workoutId === workoutId).map((item) => [item.exercise, item.effort]));
+      return Response.json({ workout, sets, efforts }, { headers: { "Cache-Control": "no-store" } });
+    }
+    return Response.json(dashboard(data), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Could not load workouts." }, { status: 500 });
   }
@@ -48,7 +60,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { action?: string; dayType?: string; workoutId?: number; setId?: number; exercise?: string; weight?: number; reps?: number; effort?: string };
+    const body = await request.json() as { action?: string; dayType?: string; startedAt?: string; workoutId?: number; setId?: number; exercise?: string; weight?: number; reps?: number; effort?: string };
     const data = await readData();
 
     if (body.action === "start") {
@@ -72,7 +84,7 @@ export async function POST(request: Request) {
     if (body.action === "setEffort") {
       const validEfforts: Effort[] = ["maxed", "challenging", "moderate", "easy"];
       if (!body.workoutId || !body.exercise?.trim() || !validEfforts.includes(body.effort as Effort)) return Response.json({ error: "Choose a valid effort level." }, { status: 400 });
-      if (!data.workouts.some((workout) => workout.id === body.workoutId && !workout.endedAt)) return Response.json({ error: "That workout is no longer active." }, { status: 409 });
+      if (!data.workouts.some((workout) => workout.id === body.workoutId)) return Response.json({ error: "Workout not found." }, { status: 404 });
       const existing = data.efforts.find((item) => item.workoutId === body.workoutId && item.exercise === body.exercise);
       if (existing) existing.effort = body.effort as Effort;
       else data.efforts.push({ workoutId: body.workoutId, exercise: body.exercise, effort: body.effort as Effort });
@@ -82,12 +94,32 @@ export async function POST(request: Request) {
 
     if (body.action === "removeSet") {
       if (!body.workoutId || !body.setId) return Response.json({ error: "Set not found." }, { status: 400 });
-      if (!data.workouts.some((workout) => workout.id === body.workoutId && !workout.endedAt)) return Response.json({ error: "That workout is no longer active." }, { status: 409 });
+      if (!data.workouts.some((workout) => workout.id === body.workoutId)) return Response.json({ error: "Workout not found." }, { status: 404 });
       const setIndex = data.sets.findIndex((set) => set.id === body.setId && set.workoutId === body.workoutId);
       if (setIndex === -1) return Response.json({ error: "Set not found." }, { status: 404 });
       data.sets.splice(setIndex, 1);
       await writeData(data);
       return Response.json({ removed: true });
+    }
+
+    if (body.action === "updateSet") {
+      if (!body.workoutId || !body.setId || !Number.isFinite(body.weight) || !Number.isInteger(body.reps) || body.weight! <= 0 || body.reps! <= 0) return Response.json({ error: "Enter a valid weight and rep count." }, { status: 400 });
+      const set = data.sets.find((item) => item.id === body.setId && item.workoutId === body.workoutId);
+      if (!set) return Response.json({ error: "Set not found." }, { status: 404 });
+      set.weight = body.weight!;
+      set.reps = body.reps!;
+      await writeData(data);
+      return Response.json({ set });
+    }
+
+    if (body.action === "updateWorkout") {
+      if (!body.workoutId || (body.dayType !== "upper" && body.dayType !== "lower") || !body.startedAt || Number.isNaN(Date.parse(body.startedAt))) return Response.json({ error: "Enter valid session details." }, { status: 400 });
+      const workout = data.workouts.find((item) => item.id === body.workoutId);
+      if (!workout) return Response.json({ error: "Workout not found." }, { status: 404 });
+      workout.dayType = body.dayType;
+      workout.startedAt = new Date(body.startedAt).toISOString();
+      await writeData(data);
+      return Response.json({ workout });
     }
 
     if (body.action === "finish" && body.workoutId) {
