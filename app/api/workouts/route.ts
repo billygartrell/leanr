@@ -4,11 +4,13 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 type DayType = "upper" | "lower";
+type Effort = "maxed" | "challenging" | "moderate" | "easy";
 type Workout = { id: number; dayType: DayType; startedAt: string; endedAt: string | null };
 type WorkoutSet = { id: number; workoutId: number; exercise: string; weight: number; reps: number; createdAt: string };
-type TrainingData = { workouts: Workout[]; sets: WorkoutSet[] };
+type ExerciseEffort = { workoutId: number; exercise: string; effort: Effort };
+type TrainingData = { workouts: Workout[]; sets: WorkoutSet[]; efforts: ExerciseEffort[] };
 
-const EMPTY_DATA: TrainingData = { workouts: [], sets: [] };
+const EMPTY_DATA: TrainingData = { workouts: [], sets: [], efforts: [] };
 const DATA_KEY = "training-data";
 
 function store() {
@@ -16,7 +18,8 @@ function store() {
 }
 
 async function readData(): Promise<TrainingData> {
-  return (await store().get(DATA_KEY, { type: "json" })) as TrainingData | null ?? structuredClone(EMPTY_DATA);
+  const saved = (await store().get(DATA_KEY, { type: "json" })) as Partial<TrainingData> | null;
+  return { workouts: saved?.workouts ?? [], sets: saved?.sets ?? [], efforts: saved?.efforts ?? [] };
 }
 
 async function writeData(data: TrainingData) {
@@ -26,12 +29,13 @@ async function writeData(data: TrainingData) {
 function dashboard(data: TrainingData) {
   const activeWorkout = [...data.workouts].reverse().find((workout) => !workout.endedAt) ?? null;
   const sets = activeWorkout ? data.sets.filter((set) => set.workoutId === activeWorkout.id) : [];
+  const efforts = activeWorkout ? Object.fromEntries(data.efforts.filter((item) => item.workoutId === activeWorkout.id).map((item) => [item.exercise, item.effort])) : {};
   const bests = data.sets.reduce<Record<string, number>>((result, set) => {
     result[set.exercise] = Math.max(result[set.exercise] ?? 0, set.weight);
     return result;
   }, {});
   const recentWorkouts = data.workouts.filter((workout) => workout.endedAt).slice(-12).reverse();
-  return { activeWorkout, sets, bests, recentWorkouts };
+  return { activeWorkout, sets, efforts, bests, recentWorkouts };
 }
 
 export async function GET() {
@@ -44,7 +48,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { action?: string; dayType?: string; workoutId?: number; exercise?: string; weight?: number; reps?: number };
+    const body = await request.json() as { action?: string; dayType?: string; workoutId?: number; exercise?: string; weight?: number; reps?: number; effort?: string };
     const data = await readData();
 
     if (body.action === "start") {
@@ -65,6 +69,17 @@ export async function POST(request: Request) {
       return Response.json({ set }, { status: 201 });
     }
 
+    if (body.action === "setEffort") {
+      const validEfforts: Effort[] = ["maxed", "challenging", "moderate", "easy"];
+      if (!body.workoutId || !body.exercise?.trim() || !validEfforts.includes(body.effort as Effort)) return Response.json({ error: "Choose a valid effort level." }, { status: 400 });
+      if (!data.workouts.some((workout) => workout.id === body.workoutId && !workout.endedAt)) return Response.json({ error: "That workout is no longer active." }, { status: 409 });
+      const existing = data.efforts.find((item) => item.workoutId === body.workoutId && item.exercise === body.exercise);
+      if (existing) existing.effort = body.effort as Effort;
+      else data.efforts.push({ workoutId: body.workoutId, exercise: body.exercise, effort: body.effort as Effort });
+      await writeData(data);
+      return Response.json({ effort: body.effort });
+    }
+
     if (body.action === "finish" && body.workoutId) {
       const workout = data.workouts.find((item) => item.id === body.workoutId);
       if (!workout) return Response.json({ error: "Workout not found." }, { status: 404 });
@@ -78,6 +93,7 @@ export async function POST(request: Request) {
       if (workoutIndex === -1) return Response.json({ error: "Active workout not found." }, { status: 404 });
       data.workouts.splice(workoutIndex, 1);
       data.sets = data.sets.filter((set) => set.workoutId !== body.workoutId);
+      data.efforts = data.efforts.filter((item) => item.workoutId !== body.workoutId);
       await writeData(data);
       return Response.json({ cancelled: true });
     }

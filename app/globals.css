@@ -58,6 +58,15 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
 .exercise-title p { margin:7px 0 0; font-size:9px; font-weight:800; letter-spacing:.13em; color:#77736c; }
 .exercise-title p b { color:var(--ink); margin-left:6px; }
 .exercise-title mark { background:var(--acid); padding:7px 10px; font:900 9px/1 Arial; text-transform:uppercase; }
+.effort-picker { padding:14px 22px; display:flex; align-items:center; justify-content:space-between; gap:18px; border-bottom:1px solid var(--line); }
+.effort-picker > span { font-size:9px; font-weight:900; letter-spacing:.13em; white-space:nowrap; }
+.effort-picker > div { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
+.effort-picker button { border:1px solid #aaa59b; background:transparent; padding:7px 10px; font-size:9px; font-weight:850; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; }
+.effort-picker button.selected { border-color:var(--ink); color:var(--ink); box-shadow:2px 2px 0 var(--ink); }
+.effort-picker button.selected.maxed { background:var(--coral); }
+.effort-picker button.selected.challenging { background:#f3a24f; }
+.effort-picker button.selected.moderate { background:var(--acid); }
+.effort-picker button.selected.easy { background:#9dd9c5; }
 .set-list { padding:0 22px; }
 .set-list > div { display:grid; grid-template-columns:1fr 90px 25px 90px auto; align-items:center; gap:8px; border-bottom:1px solid var(--line); padding:13px 0; }
 .set-list span,.set-list small { font-size:9px; letter-spacing:.11em; color:#77736c; }
@@ -82,6 +91,9 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
   .finish { width:100%; }
   .exercise-title { grid-template-columns:30px 1fr; padding:16px; }
   .exercise-title mark { grid-column:2; justify-self:start; }
+  .effort-picker { align-items:flex-start; flex-direction:column; padding:14px 16px; }
+  .effort-picker > div { justify-content:flex-start; width:100%; }
+  .effort-picker button { flex:1; min-width:105px; }
   .set-list { padding:0 16px; }
   .set-list > div { grid-template-columns:1fr 70px 14px 72px; }
   .set-list em { display:none; }
