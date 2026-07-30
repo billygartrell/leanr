@@ -8,7 +8,7 @@ type LoggedSet = { id: number; workoutId: number; exercise: string; weight: numb
 type Workout = { id: number; dayType: DayType; startedAt: string; endedAt: string | null };
 type RecentWorkout = Workout & { setCount: number };
 type SessionDetail = { workout: Workout; sets: LoggedSet[]; efforts: Record<string, Effort> };
-type Dashboard = { activeWorkout: Workout | null; sets: LoggedSet[]; efforts: Record<string, Effort>; bests: Record<string, number>; recentWorkouts: RecentWorkout[] };
+type Dashboard = { activeWorkout: Workout | null; sets: LoggedSet[]; efforts: Record<string, Effort>; bests: Record<string, number>; lastWeights: Record<string, number>; recentWorkouts: RecentWorkout[] };
 
 const EFFORTS: { value: Effort; label: string }[] = [
   { value: "maxed", label: "Maxed Out" },
@@ -19,7 +19,7 @@ const EFFORTS: { value: Effort; label: string }[] = [
 
 const EXERCISES: Record<DayType, string[]> = {
   upper: ["Bench Press", "Incline Press", "Shoulder Press", "Lat Pulldown", "Cable Row", "Bicep Curls", "Tricep Extensions"],
-  lower: ["Back squat", "Deadlift", "Leg press", "Romanian deadlift", "Leg curl", "Calf raise"],
+  lower: ["Back squat", "Deadlift", "Leg press", "Romanian deadlift", "Leg curl", "Leg Extensions", "Outer Thigh", "Inner Thigh", "Calf raise"],
 };
 
 export default function Home() {
@@ -181,13 +181,13 @@ function WorkoutView({ data, busy, onAdd, onRemove, onEffort, onFinish, onCancel
       <button className="finish" disabled={busy} onClick={onFinish}>FINISH WORKOUT <span>✓</span></button>
     </section>
     <div className="exercise-stack">
-      {exercises.map((exercise, index) => <ExerciseCard key={exercise} index={index + 1} exercise={exercise} best={data.bests[exercise]} sets={data.sets.filter((set) => set.exercise === exercise)} effort={data.efforts[exercise]} busy={busy} onAdd={onAdd} onRemove={onRemove} onEffort={onEffort} />)}
+      {exercises.map((exercise, index) => <ExerciseCard key={exercise} index={index + 1} exercise={exercise} best={data.bests[exercise]} lastWeight={data.lastWeights[exercise]} sets={data.sets.filter((set) => set.exercise === exercise)} effort={data.efforts[exercise]} busy={busy} onAdd={onAdd} onRemove={onRemove} onEffort={onEffort} />)}
     </div>
   </div>;
 }
 
-function ExerciseCard({ index, exercise, best, sets, effort, busy, onAdd, onRemove, onEffort }: { index: number; exercise: string; best?: number; sets: LoggedSet[]; effort?: Effort; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onRemove: (setId: number) => void; onEffort: (exercise: string, effort: Effort) => void }) {
-  const suggested = best || 45;
+function ExerciseCard({ index, exercise, best, lastWeight, sets, effort, busy, onAdd, onRemove, onEffort }: { index: number; exercise: string; best?: number; lastWeight?: number; sets: LoggedSet[]; effort?: Effort; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onRemove: (setId: number) => void; onEffort: (exercise: string, effort: Effort) => void }) {
+  const suggested = lastWeight || best || 45;
   const [weight, setWeight] = useState(String(suggested));
   const [reps, setReps] = useState("10");
   const sessionBest = useMemo(() => Math.max(0, ...sets.map((set) => set.weight)), [sets]);

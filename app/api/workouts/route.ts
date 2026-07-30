@@ -34,11 +34,15 @@ function dashboard(data: TrainingData) {
     result[set.exercise] = Math.max(result[set.exercise] ?? 0, set.weight);
     return result;
   }, {});
+  const lastWeights = data.sets.reduce<Record<string, number>>((result, set) => {
+    result[set.exercise] = set.weight;
+    return result;
+  }, {});
   const recentWorkouts = data.workouts.filter((workout) => workout.endedAt).slice(-20).reverse().map((workout) => ({
     ...workout,
     setCount: data.sets.filter((set) => set.workoutId === workout.id).length,
   }));
-  return { activeWorkout, sets, efforts, bests, recentWorkouts };
+  return { activeWorkout, sets, efforts, bests, lastWeights, recentWorkouts };
 }
 
 export async function GET(request: Request) {
