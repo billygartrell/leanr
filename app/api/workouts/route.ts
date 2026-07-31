@@ -10,20 +10,24 @@ type WorkoutSet = { id: number; workoutId: number; exercise: string; weight: num
 type ExerciseEffort = { workoutId: number; exercise: string; effort: Effort };
 type TrainingData = { workouts: Workout[]; sets: WorkoutSet[]; efforts: ExerciseEffort[] };
 
-const EMPTY_DATA: TrainingData = { workouts: [], sets: [], efforts: [] };
-const DATA_KEY = "training-data";
+const PROFILE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
 
 function store() {
   return getStore({ name: "setmark-workouts", consistency: "strong" });
 }
 
-async function readData(): Promise<TrainingData> {
-  const saved = (await store().get(DATA_KEY, { type: "json" })) as Partial<TrainingData> | null;
+function profileId(request: Request) {
+  const id = request.headers.get("x-profile-id") ?? "";
+  return PROFILE_ID_PATTERN.test(id) ? id : null;
+}
+
+async function readData(id: string): Promise<TrainingData> {
+  const saved = (await store().get(`training-data:${id}`, { type: "json" })) as Partial<TrainingData> | null;
   return { workouts: saved?.workouts ?? [], sets: saved?.sets ?? [], efforts: saved?.efforts ?? [] };
 }
 
-async function writeData(data: TrainingData) {
-  await store().setJSON(DATA_KEY, data);
+async function writeData(id: string, data: TrainingData) {
+  await store().setJSON(`training-data:${id}`, data);
 }
 
 function dashboard(data: TrainingData) {
@@ -47,7 +51,9 @@ function dashboard(data: TrainingData) {
 
 export async function GET(request: Request) {
   try {
-    const data = await readData();
+    const id = profileId(request);
+    if (!id) return Response.json({ error: "Choose a profile first." }, { status: 401 });
+    const data = await readData(id);
     const workoutId = Number(new URL(request.url).searchParams.get("workoutId"));
     if (workoutId) {
       const workout = data.workouts.find((item) => item.id === workoutId);
@@ -64,15 +70,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const id = profileId(request);
+    if (!id) return Response.json({ error: "Choose a profile first." }, { status: 401 });
     const body = await request.json() as { action?: string; dayType?: string; startedAt?: string; workoutId?: number; setId?: number; exercise?: string; weight?: number; reps?: number; effort?: string };
-    const data = await readData();
+    const data = await readData(id);
 
     if (body.action === "start") {
       if (body.dayType !== "upper" && body.dayType !== "lower") return Response.json({ error: "Choose upper or lower body." }, { status: 400 });
       if (data.workouts.some((workout) => !workout.endedAt)) return Response.json({ error: "Finish your current workout first." }, { status: 409 });
       const workout: Workout = { id: Date.now(), dayType: body.dayType, startedAt: new Date().toISOString(), endedAt: null };
       data.workouts.push(workout);
-      await writeData(data);
+      await writeData(id, data);
       return Response.json({ workout }, { status: 201 });
     }
 
@@ -81,7 +89,7 @@ export async function POST(request: Request) {
       if (!data.workouts.some((workout) => workout.id === body.workoutId && !workout.endedAt)) return Response.json({ error: "That workout is no longer active." }, { status: 409 });
       const set: WorkoutSet = { id: Date.now(), workoutId: body.workoutId, exercise: body.exercise.trim(), weight: body.weight!, reps: body.reps!, createdAt: new Date().toISOString() };
       data.sets.push(set);
-      await writeData(data);
+      await writeData(id, data);
       return Response.json({ set }, { status: 201 });
     }
 
@@ -92,7 +100,7 @@ export async function POST(request: Request) {
       const existing = data.efforts.find((item) => item.workoutId === body.workoutId && item.exercise === body.exercise);
       if (existing) existing.effort = body.effort as Effort;
       else data.efforts.push({ workoutId: body.workoutId, exercise: body.exercise, effort: body.effort as Effort });
-      await writeData(data);
+      await writeData(id, data);
       return Response.json({ effort: body.effort });
     }
 
@@ -102,7 +110,7 @@ export async function POST(request: Request) {
       const setIndex = data.sets.findIndex((set) => set.id === body.setId && set.workoutId === body.workoutId);
       if (setIndex === -1) return Response.json({ error: "Set not found." }, { status: 404 });
       data.sets.splice(setIndex, 1);
-      await writeData(data);
+      await writeData(id, data);
       return Response.json({ removed: true });
     }
 
@@ -112,7 +120,7 @@ export async function POST(request: Request) {
       if (!set) return Response.json({ error: "Set not found." }, { status: 404 });
       set.weight = body.weight!;
       set.reps = body.reps!;
-      await writeData(data);
+      await writeData(id, data);
       return Response.json({ set });
     }
 
@@ -122,7 +130,7 @@ export async function POST(request: Request) {
       if (!workout) return Response.json({ error: "Workout not found." }, { status: 404 });
       workout.dayType = body.dayType;
       workout.startedAt = new Date(body.startedAt).toISOString();
-      await writeData(data);
+      await writeData(id, data);
       return Response.json({ workout });
     }
 
@@ -130,7 +138,7 @@ export async function POST(request: Request) {
       const workout = data.workouts.find((item) => item.id === body.workoutId);
       if (!workout) return Response.json({ error: "Workout not found." }, { status: 404 });
       workout.endedAt = new Date().toISOString();
-      await writeData(data);
+      await writeData(id, data);
       return Response.json({ workout });
     }
 
@@ -140,7 +148,7 @@ export async function POST(request: Request) {
       data.workouts.splice(workoutIndex, 1);
       data.sets = data.sets.filter((set) => set.workoutId !== body.workoutId);
       data.efforts = data.efforts.filter((item) => item.workoutId !== body.workoutId);
-      await writeData(data);
+      await writeData(id, data);
       return Response.json({ cancelled: true });
     }
 

@@ -16,6 +16,7 @@ The source repository is deployed through Netlify from the `main` branch.
 - Automatically calculate personal-best weights by exercise
 - Resume an active workout
 - Review recent workout activity
+- Create and switch between separate user profiles
 
 ## Development
 
@@ -29,6 +30,7 @@ npm run build
 
 ## Persistence
 
-Workout data is stored in a strongly consistent, site-wide Netlify Blobs store.
-It persists across visits and deployments without a separate database account
-or connection string.
+Workout data is stored in a strongly consistent Netlify Blobs store, partitioned
+by profile. The original single-user data is automatically assigned to the first
+profile created after upgrading. Profiles are intentionally lightweight and are
+not password-protected accounts.

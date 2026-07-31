@@ -9,6 +9,15 @@ type Workout = { id: number; dayType: DayType; startedAt: string; endedAt: strin
 type RecentWorkout = Workout & { setCount: number };
 type SessionDetail = { workout: Workout; sets: LoggedSet[]; efforts: Record<string, Effort> };
 type Dashboard = { activeWorkout: Workout | null; sets: LoggedSet[]; efforts: Record<string, Effort>; bests: Record<string, number>; lastWeights: Record<string, number>; recentWorkouts: RecentWorkout[] };
+type Profile = { id: string; name: string; createdAt: string };
+
+const PROFILE_KEY = "leanr-profile-id";
+
+async function fetchDashboard(profile: Profile): Promise<Dashboard> {
+  const response = await fetch("/api/workouts", { cache: "no-store", headers: { "X-Profile-Id": profile.id } });
+  if (!response.ok) throw new Error("Could not load your training data.");
+  return response.json();
+}
 
 const EFFORTS: { value: Effort; label: string }[] = [
   { value: "maxed", label: "Maxed Out" },
@@ -23,27 +32,63 @@ const EXERCISES: Record<DayType, string[]> = {
 };
 
 export default function Home() {
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
   const [data, setData] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedSession, setSelectedSession] = useState<SessionDetail | null>(null);
 
-  const refresh = async () => {
-    const response = await fetch("/api/workouts", { cache: "no-store" });
-    if (!response.ok) throw new Error("Could not load your training data.");
-    setData(await response.json());
+  const refresh = async (profile = activeProfile) => {
+    if (!profile) return;
+    setData(await fetchDashboard(profile));
   };
 
   useEffect(() => {
-    refresh().catch((error) => setMessage(error.message)).finally(() => setLoading(false));
+    fetch("/api/profiles", { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not load profiles.");
+        const available = result.profiles as Profile[];
+        setProfiles(available);
+        const savedId = window.localStorage.getItem(PROFILE_KEY);
+        const selected = available.find((profile) => profile.id === savedId) ?? null;
+        if (selected) {
+          setActiveProfile(selected);
+          setData(await fetchDashboard(selected));
+        }
+      })
+      .catch((error) => setMessage(error.message))
+      .finally(() => setLoading(false));
   }, []);
+
+  const selectProfile = async (profile: Profile) => {
+    setLoading(true);
+    setMessage("");
+    setSelectedSession(null);
+    setData(null);
+    setActiveProfile(profile);
+    window.localStorage.setItem(PROFILE_KEY, profile.id);
+    try { await refresh(profile); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Could not load that profile."); }
+    finally { setLoading(false); }
+  };
+
+  const createProfile = async (name: string) => {
+    const response = await fetch("/api/profiles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Could not create profile.");
+    const profile = result.profile as Profile;
+    setProfiles((current) => [...current, profile]);
+    await selectProfile(profile);
+  };
 
   const openSession = async (workoutId: number) => {
     setBusy(true);
     setMessage("");
     try {
-      const response = await fetch(`/api/workouts?workoutId=${workoutId}`, { cache: "no-store" });
+      const response = await fetch(`/api/workouts?workoutId=${workoutId}`, { cache: "no-store", headers: { "X-Profile-Id": activeProfile!.id } });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not open that session.");
       setSelectedSession(result);
@@ -60,7 +105,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/workouts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Profile-Id": activeProfile!.id },
         body: JSON.stringify(payload),
       });
       const result = await response.json();
@@ -75,13 +120,17 @@ export default function Home() {
   };
 
   if (loading) return <main className="loading">Loading your training log…</main>;
+  if (!activeProfile) return <ProfileGate profiles={profiles} message={message} onSelect={selectProfile} onCreate={createProfile} />;
   if (!data) return <main className="loading">{message || "Your training log is unavailable."}</main>;
 
   return (
     <main>
       <header className="topbar">
         <a className="brand" href="#top" aria-label="Leanr home"><span>LR</span> LEANR</a>
-        <div className="today"><i /> {new Intl.DateTimeFormat("en", { weekday: "short", month: "short", day: "numeric" }).format(new Date())}</div>
+        <div className="profile-tools">
+          <label><span>TRAINING AS</span><select value={activeProfile.id} onChange={(event) => selectProfile(profiles.find((profile) => profile.id === event.target.value)!)}>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>
+          <button onClick={() => { window.localStorage.removeItem(PROFILE_KEY); setActiveProfile(null); setData(null); }}>SWITCH / ADD</button>
+        </div>
       </header>
 
       {selectedSession ? (
@@ -94,6 +143,32 @@ export default function Home() {
       {message && <div className="toast" role="alert">{message}</div>}
     </main>
   );
+}
+
+function ProfileGate({ profiles, message, onSelect, onCreate }: { profiles: Profile[]; message: string; onSelect: (profile: Profile) => void; onCreate: (name: string) => Promise<void> }) {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(message);
+  const create = async () => {
+    if (!name.trim()) return;
+    setBusy(true); setError("");
+    try { await onCreate(name); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not create profile."); setBusy(false); }
+  };
+  return <main className="profile-gate">
+    <section className="profile-card">
+      <a className="brand" href="#" aria-label="Leanr home"><span>LR</span> LEANR</a>
+      <p className="eyebrow">WHO IS TRAINING?</p>
+      <h1>Choose your<br /><em>profile.</em></h1>
+      {profiles.length > 0 && <div className="profile-list">{profiles.map((profile) => <button key={profile.id} disabled={busy} onClick={() => onSelect(profile)}><span>{profile.name.slice(0, 1).toUpperCase()}</span><strong>{profile.name}</strong><b>→</b></button>)}</div>}
+      <div className="new-profile">
+        <label>NEW PROFILE<input autoComplete="name" maxLength={40} placeholder="Your name" value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") create(); }} /></label>
+        <button disabled={busy || !name.trim()} onClick={create}>{busy ? "CREATING…" : "ADD PROFILE +"}</button>
+      </div>
+      {error && <p className="profile-error" role="alert">{error}</p>}
+      <small>Profiles keep workout histories separate on this shared app. They are not password protected.</small>
+    </section>
+  </main>;
 }
 
 function StartView({ data, busy, onStart, onOpenSession }: { data: Dashboard; busy: boolean; onStart: (day: DayType) => void; onOpenSession: (workoutId: number) => void }) {
