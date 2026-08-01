@@ -3,7 +3,7 @@ import { getStore } from "@netlify/blobs";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-type DayType = "upper" | "lower";
+type DayType = "upper" | "lower" | "full" | "cardio";
 type Effort = "maxed" | "challenging" | "moderate" | "easy";
 type Workout = { id: number; dayType: DayType; startedAt: string; endedAt: string | null };
 type WorkoutSet = { id: number; workoutId: number; exercise: string; weight: number; reps: number; createdAt: string };
@@ -11,6 +11,7 @@ type ExerciseEffort = { workoutId: number; exercise: string; effort: Effort };
 type TrainingData = { workouts: Workout[]; sets: WorkoutSet[]; efforts: ExerciseEffort[] };
 
 const PROFILE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
+const DAY_TYPES: DayType[] = ["upper", "lower", "full", "cardio"];
 
 function store() {
   return getStore({ name: "setmark-workouts", consistency: "strong" });
@@ -76,9 +77,9 @@ export async function POST(request: Request) {
     const data = await readData(id);
 
     if (body.action === "start") {
-      if (body.dayType !== "upper" && body.dayType !== "lower") return Response.json({ error: "Choose upper or lower body." }, { status: 400 });
+      if (!DAY_TYPES.includes(body.dayType as DayType)) return Response.json({ error: "Choose a valid workout type." }, { status: 400 });
       if (data.workouts.some((workout) => !workout.endedAt)) return Response.json({ error: "Finish your current workout first." }, { status: 409 });
-      const workout: Workout = { id: Date.now(), dayType: body.dayType, startedAt: new Date().toISOString(), endedAt: null };
+      const workout: Workout = { id: Date.now(), dayType: body.dayType as DayType, startedAt: new Date().toISOString(), endedAt: null };
       data.workouts.push(workout);
       await writeData(id, data);
       return Response.json({ workout }, { status: 201 });
@@ -125,10 +126,10 @@ export async function POST(request: Request) {
     }
 
     if (body.action === "updateWorkout") {
-      if (!body.workoutId || (body.dayType !== "upper" && body.dayType !== "lower") || !body.startedAt || Number.isNaN(Date.parse(body.startedAt))) return Response.json({ error: "Enter valid session details." }, { status: 400 });
+      if (!body.workoutId || !DAY_TYPES.includes(body.dayType as DayType) || !body.startedAt || Number.isNaN(Date.parse(body.startedAt))) return Response.json({ error: "Enter valid session details." }, { status: 400 });
       const workout = data.workouts.find((item) => item.id === body.workoutId);
       if (!workout) return Response.json({ error: "Workout not found." }, { status: 404 });
-      workout.dayType = body.dayType;
+      workout.dayType = body.dayType as DayType;
       workout.startedAt = new Date(body.startedAt).toISOString();
       await writeData(id, data);
       return Response.json({ workout });

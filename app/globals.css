@@ -44,6 +44,9 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
 .day-card:disabled { opacity:.6; }
 .day-card.coral { background:var(--coral); }
 .day-card.blue { background:var(--blue); color:white; }
+.day-card.acid { background:var(--acid); }
+.day-card.mint { background:#9dd9c5; }
+.day-card.acid strong,.day-card.mint strong { font-size:clamp(32px,3.4vw,52px); }
 .day-number { font:900 11px/1 Arial; letter-spacing:.15em; }
 .day-icon { font:300 34px/1 Arial; }
 .day-card strong { grid-column:1/-1; align-self:end; font-size:clamp(36px,4vw,62px); letter-spacing:-.06em; line-height:.9; }

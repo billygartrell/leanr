@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type DayType = "upper" | "lower";
+type DayType = "upper" | "lower" | "full" | "cardio";
 type Effort = "maxed" | "challenging" | "moderate" | "easy";
 type LoggedSet = { id: number; workoutId: number; exercise: string; weight: number; reps: number; createdAt: string };
 type Workout = { id: number; dayType: DayType; startedAt: string; endedAt: string | null };
@@ -26,10 +26,21 @@ const EFFORTS: { value: Effort; label: string }[] = [
   { value: "easy", label: "Easy" },
 ];
 
+const UPPER_EXERCISES = ["Bench Press", "Incline Press", "Chest Press", "Chest Fly", "Reverse Fly", "Shoulder Press", "Pulldown Wide", "Pulldown Narrow", "Lat Pulldown", "Cable Row", "Strap - Suspension Row", "Bicep Curls", "Tricep Extensions", "Cable Triceps Extension Push down", "Cable Triceps Extension Overhead"];
+const LOWER_EXERCISES = ["Back squat", "Meatball squat Curl & overhead Press", "Deadlift", "Romanian Deadlift", "Leg press", "Seated Leg Press", "Leg curl", "Leg Extensions", "Outer Thigh", "Inner Thigh", "Calf raise"];
 const EXERCISES: Record<DayType, string[]> = {
-  upper: ["Bench Press", "Incline Press", "Shoulder Press", "Lat Pulldown", "Cable Row", "Bicep Curls", "Tricep Extensions"],
-  lower: ["Back squat", "Deadlift", "Leg press", "Romanian deadlift", "Leg curl", "Leg Extensions", "Outer Thigh", "Inner Thigh", "Calf raise"],
+  upper: UPPER_EXERCISES,
+  lower: LOWER_EXERCISES,
+  full: [...UPPER_EXERCISES, ...LOWER_EXERCISES],
+  cardio: ["Recumbent Bike"],
 };
+
+const DAY_OPTIONS: { value: DayType; number: string; icon: string; title: string; detail: string; className: string }[] = [
+  { value: "upper", number: "01", icon: "↗", title: "UPPER", detail: "Chest · Back · Shoulders · Arms", className: "coral" },
+  { value: "lower", number: "02", icon: "↓", title: "LOWER", detail: "Quads · Hamstrings · Glutes · Calves", className: "blue" },
+  { value: "full", number: "03", icon: "↕", title: "FULL BODY", detail: "Every strength exercise", className: "acid" },
+  { value: "cardio", number: "04", icon: "◉", title: "CARDIO", detail: "Recumbent Bike", className: "mint" },
+];
 
 export default function Home() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -178,19 +189,14 @@ function StartView({ data, busy, onStart, onOpenSession }: { data: Dashboard; bu
       <p className="eyebrow">TRAINING LOG · READY WHEN YOU ARE</p>
       <h1>What are we<br /><em>training?</em></h1>
       <p className="subcopy">Pick a split. Your best numbers come with you.</p>
-      <div className="day-grid">
-        <button className="day-card coral" disabled={busy} onClick={() => onStart("upper")}>
-          <span className="day-number">01</span><span className="day-icon">↗</span><strong>UPPER</strong><small>Chest · Back · Shoulders · Arms</small><b>START SESSION <span>→</span></b>
-        </button>
-        <button className="day-card blue" disabled={busy} onClick={() => onStart("lower")}>
-          <span className="day-number">02</span><span className="day-icon">↓</span><strong>LOWER</strong><small>Quads · Hamstrings · Glutes · Calves</small><b>START SESSION <span>→</span></b>
-        </button>
-      </div>
+      <div className="day-grid">{DAY_OPTIONS.map((option) => <button key={option.value} className={`day-card ${option.className}`} disabled={busy} onClick={() => onStart(option.value)}>
+        <span className="day-number">{option.number}</span><span className="day-icon">{option.icon}</span><strong>{option.title}</strong><small>{option.detail}</small><b>START SESSION <span>→</span></b>
+      </button>)}</div>
     </section>
     <aside className="records-panel">
       <p className="eyebrow">ALL-TIME BESTS</p>
       <h2>THE BOARD</h2>
-      {bestEntries.length ? <div className="record-list">{bestEntries.map(([name, weight], index) => <div className="record" key={name}><span>0{index + 1}</span><p>{name}<small>PERSONAL BEST</small></p><strong>{weight}<small>LB</small></strong></div>)}</div> : <div className="empty-records"><strong>NO NUMBERS YET.</strong><p>Your heaviest weight for every exercise will appear here automatically.</p></div>}
+      {bestEntries.length ? <div className="record-list">{bestEntries.map(([name, weight], index) => <div className="record" key={name}><span>0{index + 1}</span><p>{name}<small>PERSONAL BEST</small></p><strong>{weight}<small>{name === "Recumbent Bike" ? "LEVEL" : "LB"}</small></strong></div>)}</div> : <div className="empty-records"><strong>NO NUMBERS YET.</strong><p>Your best result for every exercise will appear here automatically.</p></div>}
       <div className="history-head"><span>SESSION LOG</span><b>{data.recentWorkouts.length}</b></div>
       {data.recentWorkouts.length ? <div className="history-list">{data.recentWorkouts.map((workout) => <button key={workout.id} disabled={busy} onClick={() => onOpenSession(workout.id)}><span>{new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(workout.startedAt))}</span><strong>{workout.dayType} day</strong><small>{workout.setCount} {workout.setCount === 1 ? "set" : "sets"} <b>→</b></small></button>)}</div> : <p className="no-history">Completed workouts will appear here.</p>}
     </aside>
@@ -208,7 +214,7 @@ function SessionDetailView({ session, busy, onBack, onUpdate }: { session: Sessi
     <section className="detail-head">
       <div><p className="eyebrow">SAVED SESSION</p><h1>{session.workout.dayType.toUpperCase()} <em>DAY</em></h1></div>
       <div className="session-editor">
-        <label>SESSION TYPE<select value={dayType} onChange={(event) => setDayType(event.target.value as DayType)}><option value="upper">Upper body</option><option value="lower">Lower body</option></select></label>
+        <label>SESSION TYPE<select value={dayType} onChange={(event) => setDayType(event.target.value as DayType)}><option value="upper">Upper body</option><option value="lower">Lower body</option><option value="full">Full body</option><option value="cardio">Cardio</option></select></label>
         <label>DATE<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
         <button disabled={busy} onClick={saveSession}>SAVE DETAILS</button>
       </div>
@@ -218,19 +224,19 @@ function SessionDetailView({ session, busy, onBack, onUpdate }: { session: Sessi
       return <article className="exercise-card saved-exercise" key={exercise}>
         <div className="exercise-title"><span>{String(index + 1).padStart(2, "0")}</span><div><h2>{exercise}</h2><p>{sets.length} LOGGED {sets.length === 1 ? "SET" : "SETS"}</p></div></div>
         <EffortPicker exercise={exercise} effort={session.efforts[exercise]} busy={busy} onEffort={(effort) => onUpdate({ action: "setEffort", workoutId: session.workout.id, exercise, effort })} />
-        {sets.length > 0 && <div className="saved-set-list">{sets.map((set, setIndex) => <SavedSetEditor key={set.id} set={set} index={setIndex + 1} busy={busy} onSave={(weight, reps) => onUpdate({ action: "updateSet", workoutId: session.workout.id, setId: set.id, weight, reps })} onRemove={() => onUpdate({ action: "removeSet", workoutId: session.workout.id, setId: set.id })} />)}</div>}
+        {sets.length > 0 && <div className="saved-set-list">{sets.map((set, setIndex) => <SavedSetEditor key={set.id} set={set} index={setIndex + 1} cardio={session.workout.dayType === "cardio"} busy={busy} onSave={(weight, reps) => onUpdate({ action: "updateSet", workoutId: session.workout.id, setId: set.id, weight, reps })} onRemove={() => onUpdate({ action: "removeSet", workoutId: session.workout.id, setId: set.id })} />)}</div>}
       </article>;
     })}</div> : <div className="empty-session"><strong>NO EXERCISE DATA</strong><p>This saved session has no logged sets or effort ratings.</p></div>}
   </div>;
 }
 
-function SavedSetEditor({ set, index, busy, onSave, onRemove }: { set: LoggedSet; index: number; busy: boolean; onSave: (weight: number, reps: number) => void; onRemove: () => void }) {
+function SavedSetEditor({ set, index, cardio, busy, onSave, onRemove }: { set: LoggedSet; index: number; cardio: boolean; busy: boolean; onSave: (weight: number, reps: number) => void; onRemove: () => void }) {
   const [weight, setWeight] = useState(String(set.weight));
   const [reps, setReps] = useState(String(set.reps));
   return <div className="saved-set-row">
     <span>SET {index}</span>
-    <label>WEIGHT <input type="number" inputMode="decimal" min="0" step="2.5" value={weight} onChange={(event) => setWeight(event.target.value)} /> LB</label>
-    <label>REPS <input type="number" inputMode="numeric" min="1" value={reps} onChange={(event) => setReps(event.target.value)} /></label>
+    <label>{cardio ? "RESISTANCE" : "WEIGHT"} <input type="number" inputMode="decimal" min="0" step={cardio ? "1" : "2.5"} value={weight} onChange={(event) => setWeight(event.target.value)} /> {cardio ? "LEVEL" : "LB"}</label>
+    <label>{cardio ? "MINUTES" : "REPS"} <input type="number" inputMode="numeric" min="1" value={reps} onChange={(event) => setReps(event.target.value)} /></label>
     <button className="save-set" disabled={busy || Number(weight) <= 0 || Number(reps) <= 0} onClick={() => onSave(Number(weight), Number(reps))}>SAVE</button>
     <button className="remove-set" type="button" disabled={busy} onClick={onRemove} aria-label={`Remove set ${index}`}>×</button>
   </div>;
@@ -256,27 +262,27 @@ function WorkoutView({ data, busy, onAdd, onRemove, onEffort, onFinish, onCancel
       <button className="finish" disabled={busy} onClick={onFinish}>FINISH WORKOUT <span>✓</span></button>
     </section>
     <div className="exercise-stack">
-      {exercises.map((exercise, index) => <ExerciseCard key={exercise} index={index + 1} exercise={exercise} best={data.bests[exercise]} lastWeight={data.lastWeights[exercise]} sets={data.sets.filter((set) => set.exercise === exercise)} effort={data.efforts[exercise]} busy={busy} onAdd={onAdd} onRemove={onRemove} onEffort={onEffort} />)}
+      {exercises.map((exercise, index) => <ExerciseCard key={exercise} index={index + 1} exercise={exercise} cardio={workout.dayType === "cardio"} best={data.bests[exercise]} lastWeight={data.lastWeights[exercise]} sets={data.sets.filter((set) => set.exercise === exercise)} effort={data.efforts[exercise]} busy={busy} onAdd={onAdd} onRemove={onRemove} onEffort={onEffort} />)}
     </div>
   </div>;
 }
 
-function ExerciseCard({ index, exercise, best, lastWeight, sets, effort, busy, onAdd, onRemove, onEffort }: { index: number; exercise: string; best?: number; lastWeight?: number; sets: LoggedSet[]; effort?: Effort; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onRemove: (setId: number) => void; onEffort: (exercise: string, effort: Effort) => void }) {
-  const suggested = lastWeight || best || 45;
+function ExerciseCard({ index, exercise, cardio, best, lastWeight, sets, effort, busy, onAdd, onRemove, onEffort }: { index: number; exercise: string; cardio: boolean; best?: number; lastWeight?: number; sets: LoggedSet[]; effort?: Effort; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onRemove: (setId: number) => void; onEffort: (exercise: string, effort: Effort) => void }) {
+  const suggested = lastWeight || best || (cardio ? 1 : 45);
   const [weight, setWeight] = useState(String(suggested));
-  const [reps, setReps] = useState("10");
+  const [reps, setReps] = useState(cardio ? "20" : "10");
   const sessionBest = useMemo(() => Math.max(0, ...sets.map((set) => set.weight)), [sets]);
   const submit = () => {
     const w = Number(weight), r = Number(reps);
     if (w > 0 && r > 0) onAdd(exercise, w, r);
   };
   return <article className="exercise-card">
-    <div className="exercise-title"><span>{String(index).padStart(2, "0")}</span><div><h2>{exercise}</h2><p>ALL-TIME BEST <b>{best ? `${best} LB` : "—"}</b></p></div>{sessionBest > 0 && <mark>Today {sessionBest} lb</mark>}</div>
+    <div className="exercise-title"><span>{String(index).padStart(2, "0")}</span><div><h2>{exercise}</h2><p>ALL-TIME BEST <b>{best ? `${best} ${cardio ? "LEVEL" : "LB"}` : "—"}</b></p></div>{sessionBest > 0 && <mark>Today {sessionBest} {cardio ? "level" : "lb"}</mark>}</div>
     <EffortPicker exercise={exercise} effort={effort} busy={busy} onEffort={(value) => onEffort(exercise, value)} />
-    {sets.length > 0 && <div className="set-list">{sets.map((set, i) => <div key={set.id}><span>SET {i + 1}</span><strong>{set.weight} <small>LB</small></strong><b>×</b><strong>{set.reps} <small>REPS</small></strong>{best === set.weight && <em>BEST</em>}<button className="remove-set" type="button" disabled={busy} onClick={() => onRemove(set.id)} aria-label={`Remove set ${i + 1} from ${exercise}`}>×</button></div>)}</div>}
+    {sets.length > 0 && <div className="set-list">{sets.map((set, i) => <div key={set.id}><span>{cardio ? "RIDE" : "SET"} {i + 1}</span><strong>{set.weight} <small>{cardio ? "LEVEL" : "LB"}</small></strong><b>×</b><strong>{set.reps} <small>{cardio ? "MIN" : "REPS"}</small></strong>{best === set.weight && <em>BEST</em>}<button className="remove-set" type="button" disabled={busy} onClick={() => onRemove(set.id)} aria-label={`Remove ${cardio ? "ride" : "set"} ${i + 1} from ${exercise}`}>×</button></div>)}</div>}
     <div className="set-form">
-      <label>WEIGHT <span><input inputMode="decimal" type="number" min="0" step="2.5" value={weight} onChange={(e) => setWeight(e.target.value)} /> LB</span></label>
-      <label>REPS <span><input inputMode="numeric" type="number" min="1" value={reps} onChange={(e) => setReps(e.target.value)} /></span></label>
+      <label>{cardio ? "RESISTANCE" : "WEIGHT"} <span><input inputMode="decimal" type="number" min="0" step={cardio ? "1" : "2.5"} value={weight} onChange={(e) => setWeight(e.target.value)} /> {cardio ? "LEVEL" : "LB"}</span></label>
+      <label>{cardio ? "MINUTES" : "REPS"} <span><input inputMode="numeric" type="number" min="1" value={reps} onChange={(e) => setReps(e.target.value)} /></span></label>
       <button disabled={busy || !weight || !reps} onClick={submit}>LOG SET <span>＋</span></button>
     </div>
   </article>;

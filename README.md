@@ -11,7 +11,7 @@ The source repository is deployed through Netlify from the `main` branch.
 
 ## Features
 
-- Start an upper- or lower-body workout
+- Start an upper-body, lower-body, full-body, or cardio workout
 - Log every set with its own weight and rep count
 - Automatically calculate personal-best weights by exercise
 - Resume an active workout
