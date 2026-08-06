@@ -216,8 +216,11 @@ function StartView({ data, busy, onStart, onOpenSession, onSeeAll }: { data: Das
       <p className="eyebrow">ALL-TIME BESTS</p>
       <div className="records-title"><h2>THE BOARD</h2><button disabled={busy || !bestEntries.length} onClick={onSeeAll}>SEE ALL →</button></div>
       {bestEntries.length ? <div className="record-list">{bestEntries.map(([name, weight], index) => <div className="record" key={name}><span>0{index + 1}</span><p>{name}<small>PERSONAL BEST</small></p><strong>{weight}<small>{name === "Recumbent Bike" ? "LEVEL" : "LB"}</small></strong></div>)}</div> : <div className="empty-records"><strong>NO NUMBERS YET.</strong><p>Your best result for every exercise will appear here automatically.</p></div>}
-      <div className="history-head"><span>SESSION LOG</span><b>{data.recentWorkouts.length}</b></div>
-      {data.recentWorkouts.length ? <div className="history-list">{data.recentWorkouts.map((workout) => <button key={workout.id} disabled={busy} onClick={() => onOpenSession(workout.id)}><span>{new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(workout.startedAt))}</span><strong>{workout.dayType} day</strong><small>{workout.setCount} {workout.setCount === 1 ? "set" : "sets"} <b>→</b></small></button>)}</div> : <p className="no-history">Completed workouts will appear here.</p>}
+      <section className="session-log-section">
+        <p className="eyebrow">TRAINING HISTORY</p>
+        <div className="session-log-title"><h2>SESSION LOG</h2><b>{data.recentWorkouts.length}</b></div>
+        {data.recentWorkouts.length ? <div className="history-list">{data.recentWorkouts.map((workout) => <button key={workout.id} disabled={busy} onClick={() => onOpenSession(workout.id)}><span>{new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(workout.startedAt))}</span><strong>{workout.dayType} day</strong><small>{workout.setCount} {workout.setCount === 1 ? "set" : "sets"} <b>→</b></small></button>)}</div> : <p className="no-history">Completed workouts will appear here.</p>}
+      </section>
     </aside>
   </div>;
 }

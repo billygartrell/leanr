@@ -66,6 +66,11 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
 .empty-records { padding:35px 0; border-block:1px solid #aaa59b; }
 .empty-records strong { font-size:24px; }
 .empty-records p { max-width:250px; font:14px/1.5 Georgia,serif; color:#68645d; }
+.session-log-section { margin-top:68px; padding-top:42px; border-top:1px solid var(--ink); }
+.session-log-section > .eyebrow { margin-bottom:14px; color:#68645d; }
+.session-log-title { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:18px; border-bottom:1px solid var(--ink); }
+.session-log-title h2 { margin:0; }
+.session-log-title > b { background:var(--ink); color:white; min-width:30px; height:30px; display:grid; place-items:center; font-size:11px; }
 .sessions-count { margin-top:36px; border:1px solid var(--ink); display:flex; align-items:center; gap:14px; width:max-content; padding:10px 16px; }
 .sessions-count strong { font-size:28px; }
 .sessions-count span { font-size:8px; letter-spacing:.12em; font-weight:800; }
