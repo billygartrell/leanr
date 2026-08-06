@@ -8,9 +8,9 @@ type LoggedSet = { id: number; workoutId: number; exercise: string; weight: numb
 type Workout = { id: number; dayType: DayType; startedAt: string; endedAt: string | null };
 type RecentWorkout = Workout & { setCount: number };
 type SessionDetail = { workout: Workout; sets: LoggedSet[]; efforts: Record<string, Effort> };
-type Dashboard = { activeWorkout: Workout | null; sets: LoggedSet[]; efforts: Record<string, Effort>; bests: Record<string, number>; lastWeights: Record<string, number>; recentWorkouts: RecentWorkout[] };
+type Dashboard = { activeWorkout: Workout | null; sets: LoggedSet[]; efforts: Record<string, Effort>; bests: Record<string, number>; lastWeights: Record<string, number>; lastLoggedAt: Record<string, string>; recentWorkouts: RecentWorkout[] };
 type Profile = { id: string; name: string; createdAt: string };
-type ExerciseRecord = { exercise: string; cardio: boolean; maxWeight: number; maxReps: number; maxVolume: number; estimatedOneRepMax: number | null; setCount: number; sessionCount: number; lastPerformed: string; recentSets: LoggedSet[] };
+type ExerciseRecord = { exercise: string; cardio: boolean; running: boolean; maxWeight: number; maxReps: number; maxVolume: number; bestPace: number | null; estimatedOneRepMax: number | null; setCount: number; sessionCount: number; lastPerformed: string; recentSets: LoggedSet[] };
 
 const PROFILE_KEY = "leanr-profile-id";
 
@@ -33,14 +33,14 @@ const EXERCISES: Record<DayType, string[]> = {
   upper: UPPER_EXERCISES,
   lower: LOWER_EXERCISES,
   full: [...UPPER_EXERCISES, ...LOWER_EXERCISES],
-  cardio: ["Recumbent Bike"],
+  cardio: ["Recumbent Bike", "Stationary Bike", "Outdoor Run"],
 };
 
 const DAY_OPTIONS: { value: DayType; number: string; icon: string; title: string; detail: string; className: string }[] = [
   { value: "upper", number: "01", icon: "↗", title: "UPPER", detail: "Chest · Back · Shoulders · Arms", className: "coral" },
   { value: "lower", number: "02", icon: "↓", title: "LOWER", detail: "Quads · Hamstrings · Glutes · Calves", className: "blue" },
   { value: "full", number: "03", icon: "↕", title: "FULL BODY", detail: "Every strength exercise", className: "acid" },
-  { value: "cardio", number: "04", icon: "◉", title: "CARDIO", detail: "Recumbent Bike", className: "mint" },
+  { value: "cardio", number: "04", icon: "◉", title: "CARDIO", detail: "Indoor bikes · Outdoor running", className: "mint" },
 ];
 
 export default function Home() {
@@ -215,7 +215,7 @@ function StartView({ data, busy, onStart, onOpenSession, onSeeAll }: { data: Das
     <aside className="records-panel">
       <p className="eyebrow">ALL-TIME BESTS</p>
       <div className="records-title"><h2>THE BOARD</h2><button disabled={busy || !bestEntries.length} onClick={onSeeAll}>SEE ALL →</button></div>
-      {bestEntries.length ? <div className="record-list">{bestEntries.map(([name, weight], index) => <div className="record" key={name}><span>0{index + 1}</span><p>{name}<small>PERSONAL BEST</small></p><strong>{weight}<small>{name === "Recumbent Bike" ? "LEVEL" : "LB"}</small></strong></div>)}</div> : <div className="empty-records"><strong>NO NUMBERS YET.</strong><p>Your best result for every exercise will appear here automatically.</p></div>}
+      {bestEntries.length ? <div className="record-list">{bestEntries.map(([name, weight], index) => <div className="record" key={name}><span>0{index + 1}</span><p>{name}<small>PERSONAL BEST</small></p><strong>{weight}<small>{name === "Outdoor Run" ? "MI" : name.includes("Bike") ? "LEVEL" : "LB"}</small></strong></div>)}</div> : <div className="empty-records"><strong>NO NUMBERS YET.</strong><p>Your best result for every exercise will appear here automatically.</p></div>}
       <section className="session-log-section">
         <p className="eyebrow">TRAINING HISTORY</p>
         <div className="session-log-title"><h2>SESSION LOG</h2><b>{data.recentWorkouts.length}</b></div>
@@ -232,14 +232,16 @@ function RecordsView({ records, onBack }: { records: ExerciseRecord[]; onBack: (
     <button className="back-button" onClick={onBack}>← BACK TO TRAINING</button>
     <section className="records-hero"><p className="eyebrow">ALL-TIME BESTS</p><h1>YOUR<br /><em>records.</em></h1><p>{records.length} {records.length === 1 ? "exercise" : "exercises"} with logged results.</p></section>
     {records.length ? <div className="all-records">{records.map((record, index) => <button key={record.exercise} onClick={() => setSelected(record)}>
-      <span>{String(index + 1).padStart(2, "0")}</span><div><strong>{record.exercise}</strong><small>{record.sessionCount} {record.sessionCount === 1 ? "SESSION" : "SESSIONS"} · {record.setCount} {record.cardio ? "RIDES" : "SETS"}</small></div><b>{record.maxWeight}<small>{record.cardio ? "LEVEL" : "LB"}</small></b><i>→</i>
+      <span>{String(index + 1).padStart(2, "0")}</span><div><strong>{record.exercise}</strong><small>{record.sessionCount} {record.sessionCount === 1 ? "SESSION" : "SESSIONS"} · {record.setCount} {record.running ? "RUNS" : record.cardio ? "RIDES" : "SETS"}</small></div><b>{record.maxWeight}<small>{record.running ? "MI" : record.cardio ? "LEVEL" : "LB"}</small></b><i>→</i>
     </button>)}</div> : <div className="empty-session"><strong>NO RECORDS YET</strong><p>Log your first set to start building your personal-best board.</p></div>}
   </div>;
 }
 
 function RecordDetail({ record, onBack }: { record: ExerciseRecord; onBack: () => void }) {
-  const units = record.cardio ? { weight: "LEVEL", reps: "MIN", volume: "LEVEL-MIN" } : { weight: "LB", reps: "REPS", volume: "LB × REPS" };
-  const stats = record.cardio
+  const units = record.running ? { weight: "MI", reps: "MIN", volume: "MIN/MI" } : record.cardio ? { weight: "LEVEL", reps: "MIN", volume: "LEVEL-MIN" } : { weight: "LB", reps: "REPS", volume: "LB × REPS" };
+  const stats = record.running
+    ? [["LONGEST DISTANCE", record.maxWeight, units.weight], ["LONGEST RUN", record.maxReps, units.reps], ["FASTEST PACE", record.bestPace!, units.volume]]
+    : record.cardio
     ? [["HIGHEST RESISTANCE", record.maxWeight, units.weight], ["LONGEST RIDE", record.maxReps, units.reps], ["BEST WORK SCORE", record.maxVolume, units.volume]]
     : [["HEAVIEST WEIGHT", record.maxWeight, units.weight], ["MOST REPS", record.maxReps, units.reps], ["BEST SET VOLUME", record.maxVolume, units.volume], ["EST. 1 REP MAX", record.estimatedOneRepMax!, units.weight]];
   return <div className="workout-shell record-detail" id="top">
@@ -278,11 +280,12 @@ function SessionDetailView({ session, busy, onBack, onUpdate }: { session: Sessi
 }
 
 function SavedSetEditor({ set, index, cardio, busy, onSave, onRemove }: { set: LoggedSet; index: number; cardio: boolean; busy: boolean; onSave: (weight: number, reps: number) => void; onRemove: () => void }) {
+  const running = set.exercise === "Outdoor Run";
   const [weight, setWeight] = useState(String(set.weight));
   const [reps, setReps] = useState(String(set.reps));
   return <div className="saved-set-row">
     <span>SET {index}</span>
-    <label>{cardio ? "RESISTANCE" : "WEIGHT"} <input type="number" inputMode="decimal" min="0" step={cardio ? "1" : "2.5"} value={weight} onChange={(event) => setWeight(event.target.value)} /> {cardio ? "LEVEL" : "LB"}</label>
+    <label>{running ? "DISTANCE" : cardio ? "RESISTANCE" : "WEIGHT"} <input type="number" inputMode="decimal" min="0" step={running ? "0.1" : cardio ? "1" : "2.5"} value={weight} onChange={(event) => setWeight(event.target.value)} /> {running ? "MI" : cardio ? "LEVEL" : "LB"}</label>
     <label>{cardio ? "MINUTES" : "REPS"} <input type="number" inputMode="numeric" min="1" value={reps} onChange={(event) => setReps(event.target.value)} /></label>
     <button className="save-set" disabled={busy || Number(weight) <= 0 || Number(reps) <= 0} onClick={() => onSave(Number(weight), Number(reps))}>SAVE</button>
     <button className="remove-set" type="button" disabled={busy} onClick={onRemove} aria-label={`Remove set ${index}`}>×</button>
@@ -298,7 +301,14 @@ function EffortPicker({ exercise, effort, busy, onEffort }: { exercise: string; 
 
 function WorkoutView({ data, busy, onAdd, onRemove, onEffort, onFinish, onCancel }: { data: Dashboard; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onRemove: (setId: number) => void; onEffort: (exercise: string, effort: Effort) => void; onFinish: () => void; onCancel: () => void }) {
   const workout = data.activeWorkout!;
-  const exercises = EXERCISES[workout.dayType];
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<"alphabetical" | "recent">("alphabetical");
+  const exercises = useMemo(() => EXERCISES[workout.dayType]
+    .filter((exercise) => exercise.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+    .sort((a, b) => sort === "alphabetical"
+      ? a.localeCompare(b)
+      : (new Date(data.lastLoggedAt[b] ?? 0).getTime() - new Date(data.lastLoggedAt[a] ?? 0).getTime()) || a.localeCompare(b)),
+  [workout.dayType, query, sort, data.lastLoggedAt]);
   const goBack = () => {
     if (data.sets.length === 0 || window.confirm("Discard this session and return to workout selection? Logged sets from this session will be removed.")) onCancel();
   };
@@ -308,13 +318,19 @@ function WorkoutView({ data, busy, onAdd, onRemove, onEffort, onFinish, onCancel
       <div><p className="eyebrow">SESSION IN PROGRESS</p><h1>{workout.dayType.toUpperCase()} <em>DAY</em></h1><p className="subcopy">Log every set separately. Change the weight whenever you need.</p></div>
       <button className="finish" disabled={busy} onClick={onFinish}>FINISH WORKOUT <span>✓</span></button>
     </section>
+    <div className="exercise-tools">
+      <label><span>FIND AN EXERCISE</span><input type="search" placeholder="Search exercises…" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+      <div role="group" aria-label="Sort exercises"><span>SORT BY</span><button type="button" className={sort === "alphabetical" ? "selected" : ""} onClick={() => setSort("alphabetical")}>A–Z</button><button type="button" className={sort === "recent" ? "selected" : ""} onClick={() => setSort("recent")}>RECENT</button></div>
+    </div>
     <div className="exercise-stack">
       {exercises.map((exercise, index) => <ExerciseCard key={exercise} index={index + 1} exercise={exercise} cardio={workout.dayType === "cardio"} best={data.bests[exercise]} lastWeight={data.lastWeights[exercise]} sets={data.sets.filter((set) => set.exercise === exercise)} effort={data.efforts[exercise]} busy={busy} onAdd={onAdd} onRemove={onRemove} onEffort={onEffort} />)}
+      {!exercises.length && <div className="empty-session"><strong>NO EXERCISES FOUND</strong><p>Try a different search term.</p></div>}
     </div>
   </div>;
 }
 
 function ExerciseCard({ index, exercise, cardio, best, lastWeight, sets, effort, busy, onAdd, onRemove, onEffort }: { index: number; exercise: string; cardio: boolean; best?: number; lastWeight?: number; sets: LoggedSet[]; effort?: Effort; busy: boolean; onAdd: (exercise: string, weight: number, reps: number) => void; onRemove: (setId: number) => void; onEffort: (exercise: string, effort: Effort) => void }) {
+  const running = exercise === "Outdoor Run";
   const suggested = lastWeight || best || (cardio ? 1 : 45);
   const [weight, setWeight] = useState(String(suggested));
   const [reps, setReps] = useState(cardio ? "20" : "10");
@@ -324,11 +340,11 @@ function ExerciseCard({ index, exercise, cardio, best, lastWeight, sets, effort,
     if (w > 0 && r > 0) onAdd(exercise, w, r);
   };
   return <article className="exercise-card">
-    <div className="exercise-title"><span>{String(index).padStart(2, "0")}</span><div><h2>{exercise}</h2><p>ALL-TIME BEST <b>{best ? `${best} ${cardio ? "LEVEL" : "LB"}` : "—"}</b></p></div>{sessionBest > 0 && <mark>Today {sessionBest} {cardio ? "level" : "lb"}</mark>}</div>
+    <div className="exercise-title"><span>{String(index).padStart(2, "0")}</span><div><h2>{exercise}</h2><p>ALL-TIME BEST <b>{best ? `${best} ${running ? "MI" : cardio ? "LEVEL" : "LB"}` : "—"}</b></p></div>{sessionBest > 0 && <mark>Today {sessionBest} {running ? "mi" : cardio ? "level" : "lb"}</mark>}</div>
     <EffortPicker exercise={exercise} effort={effort} busy={busy} onEffort={(value) => onEffort(exercise, value)} />
-    {sets.length > 0 && <div className="set-list">{sets.map((set, i) => <div key={set.id}><span>{cardio ? "RIDE" : "SET"} {i + 1}</span><strong>{set.weight} <small>{cardio ? "LEVEL" : "LB"}</small></strong><b>×</b><strong>{set.reps} <small>{cardio ? "MIN" : "REPS"}</small></strong>{best === set.weight && <em>BEST</em>}<button className="remove-set" type="button" disabled={busy} onClick={() => onRemove(set.id)} aria-label={`Remove ${cardio ? "ride" : "set"} ${i + 1} from ${exercise}`}>×</button></div>)}</div>}
+    {sets.length > 0 && <div className="set-list">{sets.map((set, i) => <div key={set.id}><span>{running ? "RUN" : cardio ? "RIDE" : "SET"} {i + 1}</span><strong>{set.weight} <small>{running ? "MI" : cardio ? "LEVEL" : "LB"}</small></strong><b>×</b><strong>{set.reps} <small>{cardio ? "MIN" : "REPS"}</small></strong>{best === set.weight && <em>BEST</em>}<button className="remove-set" type="button" disabled={busy} onClick={() => onRemove(set.id)} aria-label={`Remove ${running ? "run" : cardio ? "ride" : "set"} ${i + 1} from ${exercise}`}>×</button></div>)}</div>}
     <div className="set-form">
-      <label>{cardio ? "RESISTANCE" : "WEIGHT"} <span><input inputMode="decimal" type="number" min="0" step={cardio ? "1" : "2.5"} value={weight} onChange={(e) => setWeight(e.target.value)} /> {cardio ? "LEVEL" : "LB"}</span></label>
+      <label>{running ? "DISTANCE" : cardio ? "RESISTANCE" : "WEIGHT"} <span><input inputMode="decimal" type="number" min="0" step={running ? "0.1" : cardio ? "1" : "2.5"} value={weight} onChange={(e) => setWeight(e.target.value)} /> {running ? "MI" : cardio ? "LEVEL" : "LB"}</span></label>
       <label>{cardio ? "MINUTES" : "REPS"} <span><input inputMode="numeric" type="number" min="1" value={reps} onChange={(e) => setReps(e.target.value)} /></span></label>
       <button disabled={busy || !weight || !reps} onClick={submit}>LOG SET <span>＋</span></button>
     </div>

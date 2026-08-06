@@ -115,6 +115,14 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
 .session-head h1 { font-size:clamp(54px,8vw,100px); }
 .finish { background:var(--ink); color:white; border:0; padding:16px 18px; font-size:10px; font-weight:900; letter-spacing:.13em; white-space:nowrap; cursor:pointer; }
 .finish span { color:var(--acid); margin-left:16px; }
+.exercise-tools { margin:-24px 0 28px; display:grid; grid-template-columns:1fr auto; gap:1px; border:1px solid var(--ink); background:var(--ink); }
+.exercise-tools > label { background:var(--paper); padding:10px 14px; display:grid; gap:6px; }
+.exercise-tools span { font-size:8px; font-weight:950; letter-spacing:.13em; }
+.exercise-tools input { border:0; border-bottom:1px solid #928e85; background:transparent; min-height:32px; font-size:17px; font-weight:800; outline:none; }
+.exercise-tools > div { background:var(--paper); padding:10px 12px; display:flex; align-items:center; gap:6px; }
+.exercise-tools > div > span { margin-right:6px; }
+.exercise-tools button { border:1px solid var(--ink); background:transparent; padding:9px 11px; font-size:8px; font-weight:950; letter-spacing:.1em; cursor:pointer; }
+.exercise-tools button.selected { background:var(--acid); box-shadow:2px 2px 0 var(--ink); }
 .detail-head { margin-bottom:45px; }
 .detail-head h1 { font-size:clamp(52px,8vw,96px); }
 .session-editor { margin-top:30px; display:grid; grid-template-columns:1fr 1fr auto; gap:1px; background:var(--ink); border:1px solid var(--ink); max-width:740px; }
@@ -183,6 +191,8 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
   .record-stats article { min-height:140px; }
   .record-history > div:not(.history-head) { grid-template-columns:1fr 74px 10px 70px; }
   .session-head { align-items:flex-start; flex-direction:column; margin-bottom:35px; }
+  .exercise-tools { margin:-10px 0 24px; grid-template-columns:1fr; }
+  .exercise-tools > div { justify-content:flex-end; }
   .session-editor { grid-template-columns:1fr 1fr; }
   .session-editor > button { grid-column:1/-1; min-height:48px; }
   .finish { width:100%; }

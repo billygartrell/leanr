@@ -43,11 +43,15 @@ function dashboard(data: TrainingData) {
     result[set.exercise] = set.weight;
     return result;
   }, {});
+  const lastLoggedAt = data.sets.reduce<Record<string, string>>((result, set) => {
+    if (!result[set.exercise] || new Date(set.createdAt) > new Date(result[set.exercise])) result[set.exercise] = set.createdAt;
+    return result;
+  }, {});
   const recentWorkouts = data.workouts.filter((workout) => workout.endedAt).slice(-20).reverse().map((workout) => ({
     ...workout,
     setCount: data.sets.filter((set) => set.workoutId === workout.id).length,
   }));
-  return { activeWorkout, sets, efforts, bests, lastWeights, recentWorkouts };
+  return { activeWorkout, sets, efforts, bests, lastWeights, lastLoggedAt, recentWorkouts };
 }
 
 function personalRecords(data: TrainingData) {
@@ -57,13 +61,16 @@ function personalRecords(data: TrainingData) {
 
   return [...exercises.entries()].map(([exercise, sets]) => {
     const cardio = sets.some((set) => workouts.get(set.workoutId)?.dayType === "cardio");
+    const running = exercise === "Outdoor Run";
     const sorted = [...sets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return {
       exercise,
       cardio,
+      running,
       maxWeight: Math.max(...sets.map((set) => set.weight)),
       maxReps: Math.max(...sets.map((set) => set.reps)),
       maxVolume: Math.max(...sets.map((set) => set.weight * set.reps)),
+      bestPace: running ? Math.round(Math.min(...sets.map((set) => set.reps / set.weight)) * 100) / 100 : null,
       estimatedOneRepMax: cardio ? null : Math.round(Math.max(...sets.map((set) => set.weight * (1 + set.reps / 30)))),
       setCount: sets.length,
       sessionCount: new Set(sets.map((set) => set.workoutId)).size,
