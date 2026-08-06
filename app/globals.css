@@ -54,6 +54,9 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
 .day-card b { grid-column:1/-1; border-top:1px solid currentColor; padding-top:14px; font-size:10px; letter-spacing:.15em; display:flex; justify-content:space-between; }
 .records-panel { padding:clamp(42px,5vw,72px) clamp(24px,4vw,55px); background:#e7e2d8; }
 .records-panel h2 { font-size:42px; margin:0 0 28px; letter-spacing:-.06em; }
+.records-title { display:flex; align-items:start; justify-content:space-between; gap:18px; }
+.records-title button { border:1px solid var(--ink); background:var(--acid); padding:10px 12px; font-size:8px; font-weight:950; letter-spacing:.12em; cursor:pointer; white-space:nowrap; }
+.records-title button:disabled { opacity:.4; cursor:default; }
 .record { border-top:1px solid #aaa59b; padding:18px 0; display:grid; grid-template-columns:28px 1fr auto; align-items:center; gap:8px; }
 .record > span { font:700 10px/1 Arial; color:#77736c; }
 .record p { margin:0; font-weight:850; text-transform:uppercase; font-size:13px; }
@@ -76,6 +79,29 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
 .history-list button > small { font-size:9px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
 .history-list button > small b { margin-left:8px; }
 .no-history { font:13px/1.5 Georgia,serif; color:#68645d; }
+.records-view,.record-detail { max-width:1000px; }
+.records-hero { margin:20px 0 50px; }
+.records-hero h1 { font-size:clamp(52px,8vw,96px); overflow-wrap:anywhere; }
+.records-hero > p:last-child { font:15px/1.5 Georgia,serif; color:#68645d; margin:24px 0 0; }
+.all-records { border-top:1px solid var(--ink); }
+.all-records > button { width:100%; min-height:82px; border:0; border-bottom:1px solid var(--ink); background:transparent; padding:14px 10px; display:grid; grid-template-columns:40px 1fr auto 24px; align-items:center; gap:16px; text-align:left; cursor:pointer; }
+.all-records > button:hover { background:var(--acid); }
+.all-records > button > span { font-size:9px; font-weight:900; color:#77736c; }
+.all-records div { display:grid; gap:6px; }
+.all-records div strong { font-size:clamp(18px,3vw,28px); text-transform:uppercase; letter-spacing:-.035em; }
+.all-records div small { font-size:8px; font-weight:850; letter-spacing:.12em; color:#77736c; }
+.all-records > button > b { font-size:28px; }
+.all-records > button > b small { margin-left:4px; font-size:8px; letter-spacing:.1em; }
+.all-records > button > i { font-size:20px; font-style:normal; }
+.record-stats { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--ink); background:var(--ink); gap:1px; }
+.record-stats article { min-height:165px; padding:20px; background:#faf8f2; display:flex; flex-direction:column; justify-content:flex-end; }
+.record-stats span { margin-bottom:auto; font-size:8px; font-weight:950; letter-spacing:.13em; }
+.record-stats strong { font-size:clamp(38px,6vw,64px); line-height:1; letter-spacing:-.06em; }
+.record-stats small { margin-top:5px; font-size:8px; font-weight:900; letter-spacing:.12em; }
+.record-history { margin-top:45px; }
+.record-history .history-head { margin-top:0; }
+.record-history > div:not(.history-head) { min-height:55px; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr 110px 20px 110px; align-items:center; gap:8px; }
+.record-history > div > span,.record-history small { font-size:9px; font-weight:800; letter-spacing:.1em; color:#77736c; text-transform:uppercase; }
 .workout-shell { max-width:1120px; margin:auto; padding:clamp(38px,6vw,80px) clamp(18px,5vw,60px) 100px; }
 .back-button { border:0; background:transparent; padding:0 0 20px; font-size:10px; font-weight:900; letter-spacing:.14em; cursor:pointer; }
 .back-button:hover { text-decoration:underline; text-underline-offset:5px; }
@@ -145,6 +171,12 @@ h1 em { font-family:Georgia,serif; font-weight:400; text-transform:none; letter-
   .day-grid { grid-template-columns:1fr; }
   .day-card { min-height:210px; }
   .records-panel { min-height:360px; }
+  .all-records > button { grid-template-columns:26px 1fr auto 16px; gap:9px; }
+  .all-records div small { line-height:1.5; }
+  .all-records > button > b { font-size:22px; }
+  .record-stats { grid-template-columns:1fr 1fr; }
+  .record-stats article { min-height:140px; }
+  .record-history > div:not(.history-head) { grid-template-columns:1fr 74px 10px 70px; }
   .session-head { align-items:flex-start; flex-direction:column; margin-bottom:35px; }
   .session-editor { grid-template-columns:1fr 1fr; }
   .session-editor > button { grid-column:1/-1; min-height:48px; }

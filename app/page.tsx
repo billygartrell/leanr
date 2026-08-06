@@ -10,6 +10,7 @@ type RecentWorkout = Workout & { setCount: number };
 type SessionDetail = { workout: Workout; sets: LoggedSet[]; efforts: Record<string, Effort> };
 type Dashboard = { activeWorkout: Workout | null; sets: LoggedSet[]; efforts: Record<string, Effort>; bests: Record<string, number>; lastWeights: Record<string, number>; recentWorkouts: RecentWorkout[] };
 type Profile = { id: string; name: string; createdAt: string };
+type ExerciseRecord = { exercise: string; cardio: boolean; maxWeight: number; maxReps: number; maxVolume: number; estimatedOneRepMax: number | null; setCount: number; sessionCount: number; lastPerformed: string; recentSets: LoggedSet[] };
 
 const PROFILE_KEY = "leanr-profile-id";
 
@@ -50,6 +51,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedSession, setSelectedSession] = useState<SessionDetail | null>(null);
+  const [records, setRecords] = useState<ExerciseRecord[] | null>(null);
 
   const refresh = async (profile = activeProfile) => {
     if (!profile) return;
@@ -78,6 +80,7 @@ export default function Home() {
     setLoading(true);
     setMessage("");
     setSelectedSession(null);
+    setRecords(null);
     setData(null);
     setActiveProfile(profile);
     window.localStorage.setItem(PROFILE_KEY, profile.id);
@@ -110,6 +113,19 @@ export default function Home() {
     }
   };
 
+  const openRecords = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/workouts?records=1", { cache: "no-store", headers: { "X-Profile-Id": activeProfile!.id } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not load your records.");
+      setRecords(result.records);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not load your records.");
+    } finally { setBusy(false); }
+  };
+
   const act = async (payload: object) => {
     setBusy(true);
     setMessage("");
@@ -140,14 +156,17 @@ export default function Home() {
         <a className="brand" href="#top" aria-label="Leanr home"><span>LR</span> LEANR</a>
         <div className="profile-tools">
           <label><span>TRAINING AS</span><select value={activeProfile.id} onChange={(event) => selectProfile(profiles.find((profile) => profile.id === event.target.value)!)}>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>
+          <button disabled={busy} onClick={openRecords}>RECORDS</button>
           <button onClick={() => { window.localStorage.removeItem(PROFILE_KEY); setActiveProfile(null); setData(null); }}>SWITCH / ADD</button>
         </div>
       </header>
 
-      {selectedSession ? (
+      {records ? (
+        <RecordsView records={records} onBack={() => setRecords(null)} />
+      ) : selectedSession ? (
         <SessionDetailView session={selectedSession} busy={busy} onBack={() => setSelectedSession(null)} onUpdate={act} />
       ) : !data.activeWorkout ? (
-        <StartView data={data} busy={busy} onStart={(dayType) => act({ action: "start", dayType })} onOpenSession={openSession} />
+        <StartView data={data} busy={busy} onStart={(dayType) => act({ action: "start", dayType })} onOpenSession={openSession} onSeeAll={openRecords} />
       ) : (
         <WorkoutView data={data} busy={busy} onAdd={(exercise, weight, reps) => act({ action: "addSet", workoutId: data.activeWorkout!.id, exercise, weight, reps })} onRemove={(setId) => act({ action: "removeSet", workoutId: data.activeWorkout!.id, setId })} onEffort={(exercise, effort) => act({ action: "setEffort", workoutId: data.activeWorkout!.id, exercise, effort })} onFinish={() => act({ action: "finish", workoutId: data.activeWorkout!.id })} onCancel={() => act({ action: "cancel", workoutId: data.activeWorkout!.id })} />
       )}
@@ -182,7 +201,7 @@ function ProfileGate({ profiles, message, onSelect, onCreate }: { profiles: Prof
   </main>;
 }
 
-function StartView({ data, busy, onStart, onOpenSession }: { data: Dashboard; busy: boolean; onStart: (day: DayType) => void; onOpenSession: (workoutId: number) => void }) {
+function StartView({ data, busy, onStart, onOpenSession, onSeeAll }: { data: Dashboard; busy: boolean; onStart: (day: DayType) => void; onOpenSession: (workoutId: number) => void; onSeeAll: () => void }) {
   const bestEntries = Object.entries(data.bests).sort((a, b) => b[1] - a[1]).slice(0, 4);
   return <div className="shell start-shell" id="top">
     <section className="hero">
@@ -195,11 +214,36 @@ function StartView({ data, busy, onStart, onOpenSession }: { data: Dashboard; bu
     </section>
     <aside className="records-panel">
       <p className="eyebrow">ALL-TIME BESTS</p>
-      <h2>THE BOARD</h2>
+      <div className="records-title"><h2>THE BOARD</h2><button disabled={busy || !bestEntries.length} onClick={onSeeAll}>SEE ALL →</button></div>
       {bestEntries.length ? <div className="record-list">{bestEntries.map(([name, weight], index) => <div className="record" key={name}><span>0{index + 1}</span><p>{name}<small>PERSONAL BEST</small></p><strong>{weight}<small>{name === "Recumbent Bike" ? "LEVEL" : "LB"}</small></strong></div>)}</div> : <div className="empty-records"><strong>NO NUMBERS YET.</strong><p>Your best result for every exercise will appear here automatically.</p></div>}
       <div className="history-head"><span>SESSION LOG</span><b>{data.recentWorkouts.length}</b></div>
       {data.recentWorkouts.length ? <div className="history-list">{data.recentWorkouts.map((workout) => <button key={workout.id} disabled={busy} onClick={() => onOpenSession(workout.id)}><span>{new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(workout.startedAt))}</span><strong>{workout.dayType} day</strong><small>{workout.setCount} {workout.setCount === 1 ? "set" : "sets"} <b>→</b></small></button>)}</div> : <p className="no-history">Completed workouts will appear here.</p>}
     </aside>
+  </div>;
+}
+
+function RecordsView({ records, onBack }: { records: ExerciseRecord[]; onBack: () => void }) {
+  const [selected, setSelected] = useState<ExerciseRecord | null>(null);
+  if (selected) return <RecordDetail record={selected} onBack={() => setSelected(null)} />;
+  return <div className="workout-shell records-view" id="top">
+    <button className="back-button" onClick={onBack}>← BACK TO TRAINING</button>
+    <section className="records-hero"><p className="eyebrow">ALL-TIME BESTS</p><h1>YOUR<br /><em>records.</em></h1><p>{records.length} {records.length === 1 ? "exercise" : "exercises"} with logged results.</p></section>
+    {records.length ? <div className="all-records">{records.map((record, index) => <button key={record.exercise} onClick={() => setSelected(record)}>
+      <span>{String(index + 1).padStart(2, "0")}</span><div><strong>{record.exercise}</strong><small>{record.sessionCount} {record.sessionCount === 1 ? "SESSION" : "SESSIONS"} · {record.setCount} {record.cardio ? "RIDES" : "SETS"}</small></div><b>{record.maxWeight}<small>{record.cardio ? "LEVEL" : "LB"}</small></b><i>→</i>
+    </button>)}</div> : <div className="empty-session"><strong>NO RECORDS YET</strong><p>Log your first set to start building your personal-best board.</p></div>}
+  </div>;
+}
+
+function RecordDetail({ record, onBack }: { record: ExerciseRecord; onBack: () => void }) {
+  const units = record.cardio ? { weight: "LEVEL", reps: "MIN", volume: "LEVEL-MIN" } : { weight: "LB", reps: "REPS", volume: "LB × REPS" };
+  const stats = record.cardio
+    ? [["HIGHEST RESISTANCE", record.maxWeight, units.weight], ["LONGEST RIDE", record.maxReps, units.reps], ["BEST WORK SCORE", record.maxVolume, units.volume]]
+    : [["HEAVIEST WEIGHT", record.maxWeight, units.weight], ["MOST REPS", record.maxReps, units.reps], ["BEST SET VOLUME", record.maxVolume, units.volume], ["EST. 1 REP MAX", record.estimatedOneRepMax!, units.weight]];
+  return <div className="workout-shell record-detail" id="top">
+    <button className="back-button" onClick={onBack}>← ALL RECORDS</button>
+    <section className="records-hero"><p className="eyebrow">PERSONAL BESTS</p><h1>{record.exercise}</h1><p>Last performed {new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric" }).format(new Date(record.lastPerformed))}</p></section>
+    <div className="record-stats">{stats.map(([label, value, unit]) => <article key={String(label)}><span>{label}</span><strong>{value}</strong><small>{unit}</small></article>)}</div>
+    <div className="record-history"><div className="history-head"><span>RECENT RESULTS</span><b>{record.setCount}</b></div>{record.recentSets.map((set) => <div key={set.id}><span>{new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(set.createdAt))}</span><strong>{set.weight} <small>{units.weight}</small></strong><b>×</b><strong>{set.reps} <small>{units.reps}</small></strong></div>)}</div>
   </div>;
 }
 

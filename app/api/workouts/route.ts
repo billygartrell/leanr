@@ -50,12 +50,39 @@ function dashboard(data: TrainingData) {
   return { activeWorkout, sets, efforts, bests, lastWeights, recentWorkouts };
 }
 
+function personalRecords(data: TrainingData) {
+  const workouts = new Map(data.workouts.map((workout) => [workout.id, workout]));
+  const exercises = new Map<string, WorkoutSet[]>();
+  for (const set of data.sets) exercises.set(set.exercise, [...(exercises.get(set.exercise) ?? []), set]);
+
+  return [...exercises.entries()].map(([exercise, sets]) => {
+    const cardio = sets.some((set) => workouts.get(set.workoutId)?.dayType === "cardio");
+    const sorted = [...sets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return {
+      exercise,
+      cardio,
+      maxWeight: Math.max(...sets.map((set) => set.weight)),
+      maxReps: Math.max(...sets.map((set) => set.reps)),
+      maxVolume: Math.max(...sets.map((set) => set.weight * set.reps)),
+      estimatedOneRepMax: cardio ? null : Math.round(Math.max(...sets.map((set) => set.weight * (1 + set.reps / 30)))),
+      setCount: sets.length,
+      sessionCount: new Set(sets.map((set) => set.workoutId)).size,
+      lastPerformed: sorted[0].createdAt,
+      recentSets: sorted.slice(0, 12),
+    };
+  }).sort((a, b) => a.exercise.localeCompare(b.exercise));
+}
+
 export async function GET(request: Request) {
   try {
     const id = profileId(request);
     if (!id) return Response.json({ error: "Choose a profile first." }, { status: 401 });
     const data = await readData(id);
-    const workoutId = Number(new URL(request.url).searchParams.get("workoutId"));
+    const params = new URL(request.url).searchParams;
+    if (params.get("records") === "1") {
+      return Response.json({ records: personalRecords(data) }, { headers: { "Cache-Control": "no-store" } });
+    }
+    const workoutId = Number(params.get("workoutId"));
     if (workoutId) {
       const workout = data.workouts.find((item) => item.id === workoutId);
       if (!workout) return Response.json({ error: "Workout not found." }, { status: 404 });
